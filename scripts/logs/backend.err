@@ -1,0 +1,16 @@
+INFO:     Started server process [25920]
+INFO:     Waiting for application startup.
+ERROR:    Traceback (most recent call last):
+  File "C:\Users\dhanu\AppData\Local\Programs\Python\Python311\Lib\site-packages\starlette\routing.py", line 738, in lifespan
+    async with self.lifespan_context(app) as maybe_state:
+  File "C:\Users\dhanu\AppData\Local\Programs\Python\Python311\Lib\contextlib.py", line 210, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "F:\projects\kubemind-ai\backend\main.py", line 48, in lifespan
+    print("\u2705 KubeMind AI Backend started")
+  File "C:\Users\dhanu\AppData\Local\Programs\Python\Python311\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u2705' in position 0: character maps to <undefined>
+
+ERROR:    Application startup failed. Exiting.

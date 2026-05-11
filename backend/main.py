@@ -45,7 +45,7 @@ MAX_ACTIVITY     = 50
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     task = asyncio.create_task(background_collector())
-    print("✅ KubeMind AI Backend started")
+    print("[OK] KubeMind AI Backend started")
     yield
     task.cancel()
     chaos.stop()
