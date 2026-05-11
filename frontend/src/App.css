@@ -616,3 +616,32 @@
   .grid-row.cols-chaos { grid-template-columns: 1fr; }
   .rec-grid { grid-template-columns: 1fr; }
 }
+
+/* ── Theme Toggle Button ── */
+.theme-toggle {
+  position: fixed;
+  bottom: 32px;
+  right: 32px;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  font-size: 20px;
+  z-index: 200;
+  box-shadow: var(--shadow-lg);
+  transition: all var(--transition-base);
+}
+
+.theme-toggle:hover {
+  border-color: var(--accent);
+  box-shadow: var(--shadow-xl), 0 0 20px var(--accent-glow);
+  background: var(--surface-2);
+}
+
+.theme-toggle:active {
+  transform: scale(0.95);
+}

@@ -1,8 +1,10 @@
-// PATH: frontend/src/App.jsx — REPLACE ENTIRELY
+// PATH: frontend/src/App.jsx — MAIN ROUTER + THEME WRAPPER
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import './App.css';
+import { ThemeProvider, useTheme } from './context/ThemeContext';
 import MetricsPanel          from './components/MetricsPanel';
 import DependencyGraph       from './components/DependencyGraph';
 import InsightsPanel         from './components/InsightsPanel';
@@ -13,6 +15,7 @@ import ForecastPanel         from './components/ForecastPanel';
 import CorrelationMatrix     from './components/CorrelationMatrix';
 import ChaosControl          from './components/ChaosControl';
 import ActivityFeed          from './components/ActivityFeed';
+import About                 from './pages/About';
 
 const API = 'http://localhost:8000';
 
@@ -29,7 +32,7 @@ function Clock() {
   );
 }
 
-export default function App() {
+function Dashboard() {
   const [metrics,   setMetrics]   = useState({});
   const [anomalies, setAnomalies] = useState([]);
   const [graph,     setGraph]     = useState(null);
@@ -169,6 +172,28 @@ export default function App() {
             </motion.span>
 
             <Clock />
+
+            {/* About Button */}
+            <motion.a
+              href="/about"
+              className="header-about-btn"
+              whileHover={{ scale: 1.05, backgroundColor: 'var(--accent)' }}
+              whileTap={{ scale: 0.95 }}
+              style={{
+                fontSize: 12,
+                color: 'var(--text)',
+                fontWeight: 600,
+                padding: '6px 14px',
+                borderRadius: 20,
+                border: '1px solid var(--border)',
+                textDecoration: 'none',
+                cursor: 'pointer',
+                transition: 'all 0.3s ease',
+                display: 'inline-block',
+              }}
+            >
+              ⓘ About
+            </motion.a>
           </div>
         </motion.header>
 
@@ -257,5 +282,47 @@ export default function App() {
 
       </div>
     </>
+  );
+}
+
+// ============ APP CONTENT (with theme toggle) ============
+function AppContent() {
+  const { theme, toggleTheme } = useTheme();
+
+  return (
+    <>
+      <AnimatePresence mode="wait">
+        <Routes>
+          <Route path="/" element={
+            <Dashboard />
+          } />
+          <Route path="/about" element={
+            <About />
+          } />
+        </Routes>
+      </AnimatePresence>
+
+      {/* Theme Toggle Button - Fixed position */}
+      <motion.button
+        className="theme-toggle"
+        onClick={toggleTheme}
+        whileHover={{ scale: 1.1 }}
+        whileTap={{ scale: 0.95 }}
+        title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+      >
+        {theme === 'dark' ? '☀️' : '🌙'}
+      </motion.button>
+    </>
+  );
+}
+
+// ============ MAIN APP (with Router + ThemeProvider) ============
+export default function App() {
+  return (
+    <ThemeProvider>
+      <Router>
+        <AppContent />
+      </Router>
+    </ThemeProvider>
   );
 }

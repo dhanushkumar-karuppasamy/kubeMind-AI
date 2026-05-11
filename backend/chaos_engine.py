@@ -10,10 +10,10 @@ class ChaosEngine:
 
     async def start_random_simulation(self):
         self.enabled = True
-        print("[ChaosEngine] Started")
+        print("[ChaosEngine] Started - injecting anomalies every 30-50 seconds")
         while self.enabled:
             try:
-                await asyncio.sleep(random.randint(120, 300))
+                await asyncio.sleep(random.randint(30, 50))  # 30-50 seconds for fast demo
                 if not self.enabled:
                     break
                 pods = list(self.prometheus.current_metrics.keys())
@@ -23,6 +23,7 @@ class ChaosEngine:
                 atype = random.choice(["cpu_spike", "memory_leak", "network_burst", "io_spike"])
                 await self.inject_anomaly(target, atype)
                 self.injection_count += 1
+                print(f"[ChaosEngine] Injected {atype} on {target} (total: {self.injection_count})")
             except asyncio.CancelledError:
                 break
             except Exception as e:

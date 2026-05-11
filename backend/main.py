@@ -254,7 +254,7 @@ async def activity():
 async def chaos_enable():
     if not chaos.enabled:
         asyncio.create_task(chaos.start_random_simulation())
-    return {"status": "enabled", "message": "Chaos engine running — random anomalies every 2-5 min"}
+    return {"status": "enabled", "message": "Chaos engine running — random anomalies every 30-50 seconds"}
 
 
 @app.post("/api/chaos/disable")
@@ -272,6 +272,46 @@ async def chaos_status():
 async def chaos_inject(pod_name: str, anomaly_type: str = "cpu_spike", duration: int = 60):
     result = await chaos.inject_anomaly(pod_name, anomaly_type, duration)
     return result
+
+
+@app.get("/api/summary/dependencies")
+async def summary_dependencies():
+    """LLM-generated summary of service dependencies."""
+    pods = list(prom.current_metrics.keys())
+    if not pods:
+        return {"summary": "No pods detected yet.", "pods": []}
+    
+    metrics_text = "\n".join([
+        f"- {pod}: CPU {prom.current_metrics[pod].get('cpu_percent', 0):.1f}%, "
+        f"Memory {prom.current_metrics[pod].get('memory_percent', 0):.1f}%"
+        for pod in pods
+    ])
+    
+    prompt = f"Give a short 2-sentence summary of these service dependencies: {metrics_text}"
+    try:
+        summary = llm.generate_insight(prompt)
+        return {"summary": summary, "pods": pods, "count": len(pods)}
+    except:
+        return {"summary": f"Running {len(pods)} services: {', '.join(pods)}", "pods": pods, "count": len(pods)}
+
+
+@app.get("/api/summary/health")
+async def summary_health():
+    """LLM-generated summary of cluster health."""
+    recent_anomalies = [a for a in anomaly_history 
+                       if datetime.fromisoformat(a["timestamp"]) >= datetime.utcnow() - timedelta(minutes=10)]
+    
+    if not recent_anomalies:
+        summary = "All systems operating normally. No anomalies detected in the last 10 minutes."
+    else:
+        anomaly_text = ", ".join([f"{a['type']} on {a['pod']}" for a in recent_anomalies[:5]])
+        prompt = f"Summarize in 1 sentence the health impact of: {anomaly_text}"
+        try:
+            summary = llm.generate_insight(prompt)
+        except:
+            summary = f"Detected {len(recent_anomalies)} anomalies in last 10 minutes: {anomaly_text}"
+    
+    return {"summary": summary, "anomaly_count": len(recent_anomalies), "status": "healthy" if len(recent_anomalies) < 3 else "degraded"}
 
 
 if __name__ == "__main__":
