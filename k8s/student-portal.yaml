@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: student-portal
+  namespace: kubemind-demo
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: student-portal
+  template:
+    metadata:
+      labels:
+        app: student-portal
+    spec:
+      containers:
+      - name: student-portal
+        image: kubemind/student-portal:latest
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 5000
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
+        env:
+        - name: FACE_RECOGNITION_URL
+          value: "http://face-recognition:5000"
+        - name: REQUEST_RATE
+          value: "5"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 5000
+          initialDelaySeconds: 10
+          periodSeconds: 15
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: student-portal
+  namespace: kubemind-demo
+spec:
+  selector:
+    app: student-portal
+  ports:
+  - port: 5000
+    targetPort: 5000
+  type: ClusterIP

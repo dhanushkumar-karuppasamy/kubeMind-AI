@@ -1,0 +1,127 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+*, *::before, *::after { 
+  box-sizing: border-box; 
+  margin: 0; 
+  padding: 0; 
+}
+
+:root {
+  /* Enhanced Dark Theme */
+  --bg:           #0a0a0f;
+  --bg-gradient:  radial-gradient(ellipse 80% 50% at 50% -20%, rgba(245,166,35,0.08) 0%, transparent 70%);
+  --surface:      rgba(17, 17, 24, 0.8);
+  --surface-2:    rgba(22, 22, 31, 0.6);
+  --surface-3:    rgba(28, 28, 40, 0.5);
+  --border:       rgba(255,255,255,0.08);
+  --border-hover: rgba(255,255,255,0.16);
+
+  --text:         #f0f0f5;
+  --text-muted:   #8b8b9e;
+  --text-faint:   #4a4a5a;
+
+  /* Enhanced Accent Palette */
+  --accent:       #ffa726;
+  --accent-bright:#ffb74d;
+  --accent-dim:   rgba(255,167,38,0.12);
+  --accent-glow:  rgba(255,167,38,0.3);
+
+  --green:        #4ade80;
+  --green-bright: #6ee7a0;
+  --green-dim:    rgba(74,222,128,0.12);
+  --red:          #f87171;
+  --red-bright:   #fca5a5;
+  --red-dim:      rgba(248,113,113,0.12);
+  --orange:       #fb923c;
+  --orange-dim:   rgba(251,146,60,0.12);
+  --blue:         #60a5fa;
+  --blue-bright:  #93c5fd;
+  --blue-dim:     rgba(96,165,250,0.12);
+  --purple:       #a78bfa;
+  --purple-dim:   rgba(167,139,250,0.12);
+
+  --font-display: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-body:    'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono:    'JetBrains Mono', 'Courier New', monospace;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-xl: 24px;
+
+  --shadow-sm:    0 1px 2px rgba(0,0,0,0.3);
+  --shadow-md:    0 4px 12px rgba(0,0,0,0.4);
+  --shadow-lg:    0 8px 24px rgba(0,0,0,0.5), 0 2px 8px rgba(0,0,0,0.3);
+  --shadow-xl:    0 20px 40px rgba(0,0,0,0.6), 0 4px 12px rgba(0,0,0,0.4);
+  --shadow-glow:  0 0 60px rgba(255,167,38,0.15), 0 0 30px rgba(255,167,38,0.1);
+  
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-base: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 400ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+html, body, #root {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* Enhanced Scrollbar */
+::-webkit-scrollbar { 
+  width: 8px; 
+  height: 8px;
+}
+::-webkit-scrollbar-track { 
+  background: transparent; 
+}
+::-webkit-scrollbar-thumb { 
+  background: var(--surface-3); 
+  border-radius: 8px;
+  border: 2px solid var(--bg);
+  transition: background var(--transition-base);
+}
+::-webkit-scrollbar-thumb:hover { 
+  background: rgba(255,255,255,0.15); 
+}
+
+/* Selection */
+::selection {
+  background: var(--accent-dim);
+  color: var(--accent-bright);
+}
+
+/* Smooth Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+@keyframes shimmer {
+  0% { background-position: -1000px 0; }
+  100% { background-position: 1000px 0; }
+}
+
+@keyframes glow {
+  0%, 100% { box-shadow: 0 0 20px rgba(255,167,38,0.2); }
+  50% { box-shadow: 0 0 40px rgba(255,167,38,0.4); }
+}
