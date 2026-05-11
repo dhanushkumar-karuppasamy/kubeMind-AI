@@ -218,3 +218,24 @@
 .preload * {
   transition: none !important;
 }
+
+/* Respect prefers-reduced-motion for accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .glow,
+  .float,
+  .shimmer::after,
+  .fade-in-up,
+  .scale-in,
+  .slide-in-right,
+  .pulse,
+  .bounce,
+  .rotate,
+  .gradient-border::before {
+    animation: none !important;
+  }
+
+  * {
+    transition-duration: 0ms !important;
+    animation-duration: 0ms !important;
+  }
+}

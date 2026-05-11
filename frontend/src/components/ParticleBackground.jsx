@@ -3,7 +3,12 @@ import React, { useEffect, useRef } from 'react';
 export default function ParticleBackground() {
   const canvasRef = useRef(null);
 
+  // Respect user motion preference and small screens to avoid distraction
   useEffect(() => {
+    const prefersReduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (prefersReduced) return; // do not render animations
+    if (window.innerWidth && window.innerWidth < 1000) return; // skip on small/laptop screens
+
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -12,7 +17,7 @@ export default function ParticleBackground() {
     canvas.height = window.innerHeight;
 
     const particles = [];
-    const particleCount = 50;
+    const particleCount = Math.max(10, Math.floor((canvas.width * canvas.height) / 120000));
 
     class Particle {
       constructor() {
@@ -21,7 +26,7 @@ export default function ParticleBackground() {
         this.size = Math.random() * 2 + 0.5;
         this.speedX = Math.random() * 0.5 - 0.25;
         this.speedY = Math.random() * 0.5 - 0.25;
-        this.opacity = Math.random() * 0.5 + 0.2;
+        this.opacity = Math.random() * 0.5 + 0.1;
       }
 
       update() {
@@ -47,6 +52,8 @@ export default function ParticleBackground() {
       particles.push(new Particle());
     }
 
+    let rafId = null;
+
     // Animation loop
     function animate() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -57,24 +64,26 @@ export default function ParticleBackground() {
       });
 
       // Draw connections
-      particles.forEach((a, i) => {
-        particles.slice(i + 1).forEach((b) => {
+      for (let i = 0; i < particles.length; i++) {
+        const a = particles[i];
+        for (let j = i + 1; j < particles.length; j++) {
+          const b = particles[j];
           const dx = a.x - b.x;
           const dy = a.y - b.y;
           const distance = Math.sqrt(dx * dx + dy * dy);
 
           if (distance < 150) {
-            ctx.strokeStyle = `rgba(255, 167, 38, ${0.1 * (1 - distance / 150)})`;
+            ctx.strokeStyle = `rgba(255, 167, 38, ${0.08 * (1 - distance / 150)})`;
             ctx.lineWidth = 0.5;
             ctx.beginPath();
             ctx.moveTo(a.x, a.y);
             ctx.lineTo(b.x, b.y);
             ctx.stroke();
           }
-        });
-      });
+        }
+      }
 
-      requestAnimationFrame(animate);
+      rafId = requestAnimationFrame(animate);
     }
 
     animate();
@@ -89,8 +98,14 @@ export default function ParticleBackground() {
 
     return () => {
       window.removeEventListener('resize', handleResize);
+      if (rafId) cancelAnimationFrame(rafId);
     };
   }, []);
+
+  // If prefers-reduced-motion or small screen, render nothing
+  if (typeof window !== 'undefined' && (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches || (window.innerWidth && window.innerWidth < 1000))) {
+    return null;
+  }
 
   return (
     <canvas
@@ -103,7 +118,7 @@ export default function ParticleBackground() {
         height: '100%',
         pointerEvents: 'none',
         zIndex: 0,
-        opacity: 0.4,
+        opacity: 0.36,
       }}
     />
   );

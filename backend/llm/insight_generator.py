@@ -1,5 +1,7 @@
-import ollama
 import os
+import re
+
+import ollama
 
 MODEL_NAME = os.getenv("OLLAMA_MODEL", "phi3.5:latest")
 
@@ -15,6 +17,42 @@ TEMPLATES = {
 class InsightGenerator:
     def __init__(self, model_name=MODEL_NAME):
         self.model = model_name
+
+    def generate_insight(self, prompt: str) -> str:
+        try:
+            resp = ollama.chat(
+                model=self.model,
+                messages=[{"role": "user", "content": prompt}]
+            )
+            text = resp["message"]["content"].strip()
+            sentences = [s.strip() for s in re.split(r'(?<=[.!?])\s+', text) if s.strip()]
+            if not sentences:
+                return text
+            return " ".join(sentences[:2]).strip()
+        except Exception as e:
+            print(f"[LLM] Fallback used: {e}")
+            return "LLM unavailable. Review the related metrics and logs for more detail."
+
+    def generate_bullets(self, prompt: str, fallback_bullets: list[str]) -> list[str]:
+        try:
+            resp = ollama.chat(
+                model=self.model,
+                messages=[{"role": "user", "content": prompt}]
+            )
+            text = resp["message"]["content"].strip()
+            bullets = []
+            for line in text.splitlines():
+                cleaned = line.strip().lstrip("-*•").strip()
+                if cleaned:
+                    bullets.append(cleaned)
+
+            if not bullets:
+                bullets = [s.strip() for s in re.split(r'(?<=[.!?])\s+', text) if s.strip()]
+
+            return bullets[:3] if bullets else fallback_bullets
+        except Exception as e:
+            print(f"[LLM] Fallback used: {e}")
+            return fallback_bullets
 
     async def generate(self, anomaly: dict, metrics: dict) -> str:
         pod     = anomaly.get("pod", "unknown")

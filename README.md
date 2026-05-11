@@ -184,8 +184,8 @@ kubemind-ai/
 │   ├── main.py
 │   ├── chaos_engine.py
 │   ├── forecasting.py
-│   ├── correlation_analyzer.py
-│   ├── recommendation_engine.py
+│   ├── correlation.py
+│   ├── recommendations.py
 │   └── requirements.txt
 ├── docker/
 │   ├── face-recognition/
@@ -388,6 +388,34 @@ Open `http://localhost:3000` to see the live dashboard.
 ```powershell
 .\scripts\stop-all.ps1
 ```
+
+### Developer Checks & Tests
+
+Before committing changes, run the simple checks below to keep quality consistent:
+
+Backend (run from repo root):
+
+```powershell
+cd backend
+pytest
+```
+
+Frontend (light lint + tests):
+
+```bash
+cd frontend
+npm run lint    # quick eslint pass (may be no-op if eslint is not installed)
+npm test        # runs Create React App tests (interactive)
+```
+
+For CI-style runs you can use:
+
+```bash
+cd frontend
+npm run test:ci
+```
+
+Note: the anomaly history is kept in-memory on the backend. If a pod or backend process restarts, the in-memory history (and its replayable events) will be lost; the system will continue collecting new metrics and anomalies after restart. Consider adding Redis or a small DB for persistent history in the future.
 
 ### Full Kubernetes Deployment
 

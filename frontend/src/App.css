@@ -398,6 +398,23 @@
 .ftab:hover  { border-color: var(--border-hover); color: var(--text); }
 .ftab.active { background: var(--accent-dim); color: var(--accent-bright); border-color: rgba(255,167,38,0.4); }
 .forecast-empty  { color: var(--text-muted); font-size: 12px; padding: 12px 0; }
+
+/* Golden Signals bar */
+.golden-bar {
+  padding: 16px 18px;
+}
+.signal-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 160px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+.signal-icon { font-size: 20px; width: 36px; text-align: center; }
+
 .forecast-list   { display: flex; flex-direction: column; gap: 10px; }
 .forecast-item {
   background: var(--surface-2);
@@ -447,6 +464,71 @@
 .corr-type.negative { background: var(--purple-dim); color: var(--purple); }
 .corr-strength-label { font-size: 10px; color: var(--text-muted); }
 .corr-meaning    { font-size: 11px; color: var(--text-muted); font-style: italic; }
+
+.corr-ai-row {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.corr-ai-btn {
+  align-self: flex-start;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.corr-ai-btn:hover:not(:disabled) {
+  border-color: var(--border-hover);
+  background: rgba(255, 167, 38, 0.08);
+}
+
+.corr-ai-btn:disabled {
+  opacity: 0.75;
+  cursor: wait;
+}
+
+.corr-ai-card {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 14px;
+  box-shadow: var(--shadow-sm);
+}
+
+.corr-ai-loading,
+.corr-ai-error {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.corr-ai-bullets {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.corr-ai-bullets li {
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--text);
+}
+
+.corr-ai-meta {
+  margin-top: 10px;
+  font-size: 10px;
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
 
 /* ── Chaos panel ── */
 .chaos-panel {

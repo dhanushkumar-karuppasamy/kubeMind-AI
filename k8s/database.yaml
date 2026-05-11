@@ -12,6 +12,11 @@ spec:
     metadata:
       labels:
         app: database
+        app.kubernetes.io/name: database
+        tier: backend
+        version: v2.0
+      annotations:
+        maintainer: kubemind@example.com
     spec:
       containers:
       - name: database
@@ -37,6 +42,11 @@ spec:
           exec:
             command: ["pg_isready", "-U", "postgres"]
           initialDelaySeconds: 15
+          periodSeconds: 10
+        readinessProbe:
+          exec:
+            command: ["pg_isready", "-U", "postgres"]
+          initialDelaySeconds: 5
           periodSeconds: 10
 ---
 apiVersion: v1

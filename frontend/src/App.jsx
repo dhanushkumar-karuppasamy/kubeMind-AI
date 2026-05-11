@@ -16,6 +16,7 @@ import CorrelationMatrix     from './components/CorrelationMatrix';
 import ChaosControl          from './components/ChaosControl';
 import ActivityFeed          from './components/ActivityFeed';
 import About                 from './pages/About';
+import GoldenSignalsBar      from './components/GoldenSignalsBar';
 
 const API = 'http://localhost:8000';
 
@@ -207,7 +208,10 @@ function Dashboard() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
           >
-            <MetricsPanel metrics={metrics} />
+            <>
+              <GoldenSignalsBar apiBase={API} />
+              <MetricsPanel metrics={metrics} />
+            </>
           </motion.div>
 
           {/* Row 2: Dependency graph (2/3) + Right column (1/3) */}

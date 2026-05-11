@@ -1,8 +1,12 @@
 // PATH: frontend/src/components/CorrelationMatrix.jsx
 import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 
 export default function CorrelationMatrix({ apiBase = 'http://localhost:8000' }) {
   const [data, setData] = useState(null);
+  const [explanation, setExplanation] = useState(null);
+  const [thinking, setThinking] = useState(false);
+  const [explanationError, setExplanationError] = useState(false);
 
   useEffect(() => {
     const fetch_ = async () => {
@@ -14,7 +18,27 @@ export default function CorrelationMatrix({ apiBase = 'http://localhost:8000' })
     fetch_();
     const iv = setInterval(fetch_, 20000);
     return () => clearInterval(iv);
-  }, []);
+  }, [apiBase]);
+
+  const explainView = async () => {
+    setThinking(true);
+    setExplanationError(false);
+    try {
+      const r = await fetch(`${apiBase}/api/summary/correlations`);
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const payload = await r.json();
+      setExplanation({
+        bullets: Array.isArray(payload.bullets) ? payload.bullets : [],
+        generated_at: payload.generated_at,
+      });
+    } catch (error) {
+      console.error('Correlation summary error:', error);
+      setExplanation(null);
+      setExplanationError(true);
+    } finally {
+      setThinking(false);
+    }
+  };
 
   if (!data) return <div className="panel-loading">⏳ Loading correlations…</div>;
 
@@ -54,6 +78,40 @@ export default function CorrelationMatrix({ apiBase = 'http://localhost:8000' })
           )}
         </div>
       )}
+
+      <div className="corr-ai-row">
+        <motion.button
+          type="button"
+          className="corr-ai-btn"
+          onClick={explainView}
+          whileHover={{ scale: 1.01 }}
+          whileTap={{ scale: 0.98 }}
+          disabled={thinking}
+        >
+          {thinking ? 'Thinking...' : '🤖 Explain this'}
+        </motion.button>
+
+        {thinking && !explanation && (
+          <div className="corr-ai-card corr-ai-loading">Thinking about these correlations...</div>
+        )}
+
+        {explanationError && !thinking && !explanation && (
+          <div className="corr-ai-card corr-ai-error">AI explanation unavailable</div>
+        )}
+
+        {explanation && !explanationError && (
+          <div className="corr-ai-card">
+            <ul className="corr-ai-bullets">
+              {explanation.bullets.slice(0, 3).map((bullet, index) => (
+                <li key={`${index}-${bullet}`}>{bullet}</li>
+              ))}
+            </ul>
+            <div className="corr-ai-meta">
+              Generated {explanation.generated_at ? new Date(explanation.generated_at).toLocaleString('en-IN', { hour12: false }) : 'just now'}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

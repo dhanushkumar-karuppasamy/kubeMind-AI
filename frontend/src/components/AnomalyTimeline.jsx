@@ -31,6 +31,8 @@ const CustomTooltip = ({ active, payload }) => {
 export default function AnomalyTimeline({ apiBase }) {
   const [data,     setData]     = useState([]);
   const [selected, setSelected] = useState(null);
+  const [configEvents, setConfigEvents] = useState([]);
+  const [loadingConfig, setLoadingConfig] = useState(true);
 
   useEffect(() => {
     const fetch_ = async () => {
@@ -41,6 +43,18 @@ export default function AnomalyTimeline({ apiBase }) {
           .map(([time, v]) => ({ time, count: v.count, anomalies: v.anomalies }))
           .sort((a, b) => a.time.localeCompare(b.time));
         setData(rows);
+        // fetch config events in parallel
+        try {
+          setLoadingConfig(true);
+          const rc = await fetch(`${apiBase}/api/events/config?hours=1`);
+          const dc = await rc.json();
+          setConfigEvents(dc.events || []);
+        } catch (e) {
+          console.error('config events', e);
+          setConfigEvents([]);
+        } finally {
+          setLoadingConfig(false);
+        }
       } catch(e) { console.error(e); }
     };
     fetch_();
@@ -49,6 +63,17 @@ export default function AnomalyTimeline({ apiBase }) {
   }, [apiBase]);
 
   const maxCount = Math.max(...data.map(d => d.count), 1);
+
+  const iconMap = {
+    apply: '📦',
+    scale: '📈',
+    rollout: '🚀',
+    restart: '🔄'
+  };
+
+  const severityColor = (sev) => {
+    return sev === 'critical' ? 'var(--red)' : sev === 'warning' ? 'var(--orange)' : 'var(--blue)';
+  };
 
   return (
     <div className="card">
@@ -113,6 +138,47 @@ export default function AnomalyTimeline({ apiBase }) {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
           >
+            {/* Config events row (shows config/deployment changes correlated with anomalies) */}
+            <div style={{padding:'12px 16px', borderBottom:'1px solid var(--border)', display:'flex', flexDirection:'column', gap:8}}>
+              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+                <div style={{fontSize:13,fontWeight:800,color:'var(--text)'}}>Config changes</div>
+                <div style={{fontSize:12,color:'var(--text-muted)'}}>{loadingConfig ? 'Loading…' : `${configEvents.length} recent`}</div>
+              </div>
+              <div style={{display:'flex',gap:8,overflowX:'auto',paddingTop:6,paddingBottom:6}}>
+                {loadingConfig ? (
+                  <div style={{color:'var(--text-muted)',fontSize:13}}>Loading config events…</div>
+                ) : configEvents.length === 0 ? (
+                  <div style={{color:'var(--text-muted)',fontSize:13}}>No recent config changes</div>
+                ) : (
+                  configEvents.map((ev) => (
+                    <motion.div key={ev.id}
+                      whileHover={{ scale: 1.02 }}
+                      style={{
+                        minWidth:220,
+                        background:'var(--surface-2)',
+                        border:'1px solid var(--border-hover)',
+                        padding:'8px 12px',
+                        borderRadius:10,
+                        display:'flex',
+                        flexDirection:'column',
+                        gap:6,
+                        boxShadow:'var(--shadow-sm)'
+                      }}
+                    >
+                      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8}}>
+                        <div style={{display:'flex',alignItems:'center',gap:8}}>
+                          <div style={{fontSize:18}}>{iconMap[ev.type] || '🔔'}</div>
+                          <div style={{fontWeight:700,color:'var(--text)'}}>{ev.title}</div>
+                        </div>
+                        <div style={{fontSize:11,padding:'4px 8px',borderRadius:12,background:'var(--surface-3)',color:severityColor(ev.severity),fontWeight:800}}>{ev.service}</div>
+                      </div>
+                      <div style={{fontSize:12,color:'var(--text-muted)'}}>{ev.description}</div>
+                      <div style={{fontSize:11,color:'var(--text-muted)',textAlign:'right'}}>{new Date(ev.timestamp).toLocaleTimeString()}</div>
+                    </motion.div>
+                  ))
+                )}
+              </div>
+            </div>
             <div style={{height:150}}>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart 
