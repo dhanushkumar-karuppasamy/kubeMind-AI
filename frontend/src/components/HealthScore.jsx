@@ -1,13 +1,13 @@
 // PATH: frontend/src/components/HealthScore.jsx
 import React, { useState, useEffect } from 'react';
 
-export default function HealthScore() {
+export default function HealthScore({ apiBase = 'http://localhost:8000' }) {
   const [data, setData] = useState(null);
 
   useEffect(() => {
     const fetch_ = async () => {
       try {
-        const r = await fetch('http://localhost:8000/api/health-score');
+        const r = await fetch(`${apiBase}/api/health-score`);
         setData(await r.json());
       } catch { setData(null); }
     };

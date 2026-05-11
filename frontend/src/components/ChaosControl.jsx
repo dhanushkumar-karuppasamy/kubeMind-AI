@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 const PODS = ['face-recognition', 'student-portal', 'api-gateway', 'notification', 'logging-service'];
 const TYPES = ['cpu_spike', 'memory_leak', 'network_burst', 'io_spike'];
 
-export default function ChaosControl() {
+export default function ChaosControl({ apiBase = 'http://localhost:8000' }) {
   const [status, setStatus] = useState({ enabled: false, total_injections: 0 });
   const [selectedPod, setSelectedPod] = useState(PODS[0]);
   const [selectedType, setSelectedType] = useState(TYPES[0]);
@@ -14,7 +14,7 @@ export default function ChaosControl() {
   useEffect(() => {
     const fetch_ = async () => {
       try {
-        const r = await fetch('http://localhost:8000/api/chaos/status');
+        const r = await fetch(`${apiBase}/api/chaos/status`);
         setStatus(await r.json());
       } catch {}
     };
@@ -27,7 +27,7 @@ export default function ChaosControl() {
     setLoading(true);
     const endpoint = status.enabled ? '/api/chaos/disable' : '/api/chaos/enable';
     try {
-      await fetch(`http://localhost:8000${endpoint}`, { method: 'POST' });
+      await fetch(`${apiBase}${endpoint}`, { method: 'POST' });
       setResult(status.enabled ? 'Chaos engine stopped' : 'Chaos engine enabled — auto-injecting every 2-5 min');
     } catch { setResult('Failed — is backend running?'); }
     setLoading(false);
@@ -37,7 +37,7 @@ export default function ChaosControl() {
     setLoading(true);
     try {
       const r = await fetch(
-        `http://localhost:8000/api/chaos/inject?pod_name=${selectedPod}&anomaly_type=${selectedType}&duration=60`,
+        `${apiBase}/api/chaos/inject?pod_name=${selectedPod}&anomaly_type=${selectedType}&duration=60`,
         { method: 'POST' }
       );
       const d = await r.json();

@@ -1,13 +1,13 @@
 // PATH: frontend/src/components/CorrelationMatrix.jsx
 import React, { useState, useEffect } from 'react';
 
-export default function CorrelationMatrix() {
+export default function CorrelationMatrix({ apiBase = 'http://localhost:8000' }) {
   const [data, setData] = useState(null);
 
   useEffect(() => {
     const fetch_ = async () => {
       try {
-        const r = await fetch('http://localhost:8000/api/correlations');
+        const r = await fetch(`${apiBase}/api/correlations`);
         setData(await r.json());
       } catch { setData(null); }
     };

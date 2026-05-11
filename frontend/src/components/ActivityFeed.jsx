@@ -3,13 +3,13 @@ import React, { useState, useEffect } from 'react';
 
 const SEV_COLOR = { critical: '#ef4444', high: '#f97316', medium: '#eab308', low: '#22c55e' };
 
-export default function ActivityFeed() {
+export default function ActivityFeed({ apiBase = 'http://localhost:8000' }) {
   const [events, setEvents] = useState([]);
 
   useEffect(() => {
     const fetch_ = async () => {
       try {
-        const r = await fetch('http://localhost:8000/api/activity');
+        const r = await fetch(`${apiBase}/api/activity`);
         const d = await r.json();
         setEvents(d.events || []);
       } catch {}

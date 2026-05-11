@@ -4,14 +4,14 @@ import React, { useState, useEffect } from 'react';
 const PRIORITY_COLOR = { critical: '#ef4444', high: '#f97316', medium: '#eab308', low: '#22c55e' };
 const TYPE_ICON = { scaling: '⚖️', restart: '🔄', investigate: '🔍', info: 'ℹ️' };
 
-export default function RecommendationsPanel() {
+export default function RecommendationsPanel({ apiBase = 'http://localhost:8000' }) {
   const [data, setData] = useState(null);
   const [copied, setCopied] = useState(null);
 
   useEffect(() => {
     const fetch_ = async () => {
       try {
-        const r = await fetch('http://localhost:8000/api/recommendations');
+        const r = await fetch(`${apiBase}/api/recommendations`);
         setData(await r.json());
       } catch { setData(null); }
     };

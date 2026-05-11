@@ -1,14 +1,14 @@
 // PATH: frontend/src/components/ForecastPanel.jsx
 import React, { useState, useEffect } from 'react';
 
-export default function ForecastPanel() {
+export default function ForecastPanel({ apiBase = 'http://localhost:8000' }) {
   const [data, setData] = useState(null);
   const [tab, setTab] = useState('cpu');
 
   useEffect(() => {
     const fetch_ = async () => {
       try {
-        const r = await fetch('http://localhost:8000/api/forecast');
+        const r = await fetch(`${apiBase}/api/forecast`);
         setData(await r.json());
       } catch { setData(null); }
     };
