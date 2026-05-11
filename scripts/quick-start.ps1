@@ -1,8 +1,8 @@
 # quick-start.ps1 — Fast local-only demo (no K8s/Minikube)
 # Usage: .\scripts\quick-start.ps1
-# Starts: backend, frontend, Ollama — logs to screen (streaming)
+# Starts: backend, frontend, Ollama
 
-Write-Host "Starting KubeMind AI fast local demo (Ctrl+C to stop)..." -ForegroundColor Cyan
+Write-Host "Starting KubeMind AI fast local demo..." -ForegroundColor Cyan
 
 $RepoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
 $LogDir = Join-Path $RepoRoot "scripts\logs"
@@ -10,59 +10,67 @@ $PidDir = Join-Path $RepoRoot "scripts\pids"
 New-Item -Path $LogDir -ItemType Directory -Force | Out-Null
 New-Item -Path $PidDir -ItemType Directory -Force | Out-Null
 
-function Save-Pid($name, $pid) {
-  Set-Content -Path (Join-Path $PidDir "$name.pid") -Value $pid -Force
+function Save-PidFile($name, $processId) {
+  Set-Content -Path (Join-Path $PidDir "$name.pid") -Value $processId -Force
 }
 
-# kill any stray processes from previous run
-Get-Process -Name python, node, ollama -ErrorAction SilentlyContinue | Where-Object { $_.ProcessName -match 'python|node|ollama' } | Stop-Process -Force -ErrorAction SilentlyContinue
+# Kill any stray processes from previous run
+Write-Host "Cleaning up stray processes..." -ForegroundColor Yellow
+Get-Process -Name python, node, ollama -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
 Start-Sleep -Milliseconds 500
 
-Write-Host "Starting backend (FastAPI)..." -ForegroundColor Yellow
+# Start backend
+Write-Host "Starting backend (FastAPI on port 8000)..." -ForegroundColor Yellow
 $backendLog = Join-Path $LogDir "backend.log"
-$p = Start-Process -FilePath python -ArgumentList 'main.py' -WorkingDirectory (Join-Path $RepoRoot 'backend') -NoNewWindow -RedirectStandardOutput $backendLog -PassThru
-Save-Pid "backend" $p.Id
-Write-Host "  Backend PID: $($p.Id)" -ForegroundColor Green
+$backendErr = Join-Path $LogDir "backend.err"
+$p = Start-Process -FilePath python -ArgumentList 'main.py' -WorkingDirectory (Join-Path $RepoRoot 'backend') -NoNewWindow -RedirectStandardOutput $backendLog -RedirectStandardError $backendErr -PassThru
+if ($p) {
+  Save-PidFile "backend" $p.Id
+  Write-Host "  [OK] Backend running (PID: $($p.Id))" -ForegroundColor Green
+} else {
+  Write-Host "  [ERROR] Backend failed to start" -ForegroundColor Red
+}
 
-Write-Host "Starting frontend (React dev server)..." -ForegroundColor Yellow
+# Start frontend using cmd /c to ensure npm is found
+Write-Host "Starting frontend (React on port 3000)..." -ForegroundColor Yellow
 $frontendLog = Join-Path $LogDir "frontend.log"
-$p = Start-Process -FilePath npm -ArgumentList 'start' -WorkingDirectory (Join-Path $RepoRoot 'frontend') -NoNewWindow -RedirectStandardOutput $frontendLog -PassThru
-Save-Pid "frontend" $p.Id
-Write-Host "  Frontend PID: $($p.Id)" -ForegroundColor Green
+$frontendErr = Join-Path $LogDir "frontend.err"
+$p = Start-Process -FilePath cmd -ArgumentList "/c npm start" -WorkingDirectory (Join-Path $RepoRoot 'frontend') -NoNewWindow -RedirectStandardOutput $frontendLog -RedirectStandardError $frontendErr -PassThru
+if ($p) {
+  Save-PidFile "frontend" $p.Id
+  Write-Host "  [OK] Frontend running (PID: $($p.Id))" -ForegroundColor Green
+} else {
+  Write-Host "  [ERROR] Frontend failed to start" -ForegroundColor Red
+}
 
-Write-Host "Starting Ollama..." -ForegroundColor Yellow
+# Start Ollama using cmd /c
+Write-Host "Starting Ollama (LLM service)..." -ForegroundColor Yellow
 $ollamaLog = Join-Path $LogDir "ollama.log"
-$p = Start-Process -FilePath ollama -ArgumentList 'serve' -NoNewWindow -RedirectStandardOutput $ollamaLog -PassThru
-Save-Pid "ollama" $p.Id
-Write-Host "  Ollama PID: $($p.Id)" -ForegroundColor Green
-
-Write-Host ""
-Write-Host "Services starting in background. Streaming logs..." -ForegroundColor Cyan
-Write-Host ""
-
-$services = @{
-  "BACKEND" = $backendLog
-  "FRONTEND" = $frontendLog
-  "OLLAMA" = $ollamaLog
+$ollamaErr = Join-Path $LogDir "ollama.err"
+$p = Start-Process -FilePath cmd -ArgumentList "/c ollama serve" -NoNewWindow -RedirectStandardOutput $ollamaLog -RedirectStandardError $ollamaErr -PassThru
+if ($p) {
+  Save-PidFile "ollama" $p.Id
+  Write-Host "  [OK] Ollama running (PID: $($p.Id))" -ForegroundColor Green
+} else {
+  Write-Host "  [ERROR] Ollama failed to start (install Ollama from ollama.ai)" -ForegroundColor Yellow
 }
 
-$readers = @{}
-$services.GetEnumerator() | ForEach-Object {
-  $name = $_.Name
-  $logFile = $_.Value
-  if (Test-Path $logFile) {
-    Write-Host "[$name]" -ForegroundColor Yellow
-    Get-Content $logFile -Tail 5
-  }
-}
+Start-Sleep -Seconds 3
 
 Write-Host ""
-Write-Host "Ready to demo! Open:" -ForegroundColor Green
-Write-Host "  - Frontend: http://localhost:3000/" -ForegroundColor Cyan
-Write-Host "  - Backend API: http://localhost:8000/docs" -ForegroundColor Cyan
+Write-Host "========================================" -ForegroundColor Cyan
+Write-Host "DEMO READY!" -ForegroundColor Green
+Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "To see live logs, run:" -ForegroundColor Yellow
-Write-Host "  Get-Content `$LogDir\<backend|frontend|ollama>.log -Wait -Tail 50" -ForegroundColor Gray
+Write-Host "Open in your browser:" -ForegroundColor Green
+Write-Host "  Frontend:    http://localhost:3000/" -ForegroundColor Cyan
+Write-Host "  Backend API: http://localhost:8000/docs" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "Press Ctrl+C to continue. Run '.\scripts\stop-all.ps1' when done." -ForegroundColor Cyan
-Read-Host "Press Enter to continue"
+Write-Host "Logs are saved to:" -ForegroundColor Yellow
+Write-Host "  Backend:  $backendLog" -ForegroundColor Gray
+Write-Host "  Frontend: $frontendLog" -ForegroundColor Gray
+Write-Host "  Ollama:   $ollamaLog" -ForegroundColor Gray
+Write-Host ""
+Write-Host "To stop all services, run:" -ForegroundColor Yellow
+Write-Host "  .\scripts\stop-all.ps1" -ForegroundColor Cyan
+Write-Host ""
