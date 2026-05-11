@@ -18,7 +18,7 @@ class ForecastingEngine:
         predicted = float(np.poly1d(coeffs)(len(values) + steps_ahead))
         predicted = max(0, min(100, predicted))
         current = values[-1]
-        will_exceed = predicted > 80
+        will_exceed = bool(predicted > 80)
         trend = "rising" if coeffs[0] > 0.1 else "falling" if coeffs[0] < -0.1 else "stable"
         return {
             "pod": pod_name, "current_cpu": round(current, 1),
@@ -26,7 +26,7 @@ class ForecastingEngine:
             "minutes_ahead": minutes_ahead,
             "will_exceed_threshold": will_exceed, "trend": trend,
             "message": (
-                f"⚠️ CPU will reach {predicted:.1f}% in {minutes_ahead} min — scale now"
+                f"CPU will reach {predicted:.1f}% in {minutes_ahead} min — scale now"
                 if will_exceed else
                 f"CPU projected at {predicted:.1f}% in {minutes_ahead} min — {trend}"
             )
@@ -46,7 +46,7 @@ class ForecastingEngine:
         predicted = max(0, min(100, predicted))
         current = values[-1]
         growth_rate = coeffs[0]
-        is_leak = growth_rate > 0.5
+        is_leak = bool(growth_rate > 0.5)
         minutes_to_oom = None
         if is_leak and growth_rate > 0:
             steps_to_oom = max(0, (95 - current) / growth_rate)
@@ -55,10 +55,10 @@ class ForecastingEngine:
             "pod": pod_name, "current_memory": round(current, 1),
             "predicted_memory": round(predicted, 1),
             "minutes_ahead": minutes_ahead,
-            "is_memory_leak": is_leak, "will_oom": predicted > 95,
+            "is_memory_leak": is_leak, "will_oom": bool(predicted > 95),
             "minutes_to_oom": minutes_to_oom,
             "message": (
-                f"🚨 Memory leak! OOM in ~{minutes_to_oom} min" if is_leak and minutes_to_oom
+                f"Memory leak! OOM in ~{minutes_to_oom} min" if is_leak and minutes_to_oom
                 else f"Memory at {predicted:.1f}% in {minutes_ahead} min"
             )
         }
