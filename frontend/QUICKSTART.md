@@ -9,8 +9,10 @@ npm install
 ```
 
 This will install all required packages including:
+- `react-router-dom` - For page navigation (v6.28.0)
 - `framer-motion` - For smooth animations
 - `react-intersection-observer` - For scroll-triggered animations
+- `recharts` - For interactive data visualizations
 - All existing dependencies
 
 ### 2. Start the Development Server
@@ -29,17 +31,30 @@ python main.py
 
 Backend runs at `http://localhost:8000`
 
+### 4. Start Ollama (for LLM insights)
+Ensure Ollama is running:
+```bash
+ollama serve
+```
+
 ---
 
 ## 🎨 What's New?
+
+### Theme & Navigation
+✅ **Dark/Light Theme Toggle** - Switch between modes with the ☀️/🌙 button (bottom-right)
+✅ **Theme Persistence** - Your preference is saved to localStorage
+✅ **React Router Navigation** - Navigate between Dashboard and About page
+✅ **About Page** - Comprehensive documentation with features, metrics, architecture, and more
 
 ### Visual Enhancements
 ✅ **Modern Typography** - Inter font family for clean, professional look
 ✅ **Glassmorphism** - Frosted glass effects on all cards
 ✅ **Smooth Animations** - Framer Motion powered micro-interactions
-✅ **Enhanced Colors** - Brighter, more vibrant color palette
+✅ **Enhanced Colors** - Brighter, vibrant palette in both themes
 ✅ **Custom Scrollbars** - Sleek, modern scrollbar design
 ✅ **Gradient Effects** - Beautiful gradient overlays and text effects
+✅ **CSS Variable System** - Dynamic theming without component changes
 
 ### Interactive Features
 ✅ **Hover Effects** - Cards lift and glow on hover
@@ -48,6 +63,21 @@ Backend runs at `http://localhost:8000`
 ✅ **Loading States** - Shimmer effects and pulse loaders
 ✅ **Click Interactions** - Interactive timeline with expandable details
 ✅ **Spring Physics** - Natural, bouncy button interactions
+✅ **Real-time Updates** - Metrics refresh every 5-10 seconds
+✅ **Animated Charts** - Line and bar charts with smooth transitions
+
+### Dashboard Components
+- **MetricsPanel** - CPU/memory usage bars for each pod
+- **DependencyGraph** - Service relationship visualization
+- **InsightsPanel** - LLM-generated anomaly explanations
+- **AnomalyTimeline** - 60-minute event history
+- **HealthScore** - Cluster health grading (A-F)
+- **ForecastPanel** - CPU/memory trend predictions
+- **CorrelationMatrix** - Metric dependency analysis
+- **ChaosControl** - Demo anomaly injection controls
+- **ActivityFeed** - Event logging and tracking
+- **RecommendationsPanel** - Operational suggestions
+- **About Page** - Complete documentation and guides
 
 ### Performance
 ✅ **Hardware Accelerated** - Using transform and opacity for 60fps
@@ -87,9 +117,49 @@ Backend runs at `http://localhost:8000`
 - Bars change color based on intensity
 - Tooltips animate in on hover
 
+### 6. **Theme Toggle** (New!)
+- Click the ☀️ button in the bottom-right corner to switch to light mode
+- Smooth CSS variable transitions
+- Theme preference saved to localStorage
+- All components respect theme colors
+
+### 7. **About Page** (New!)
+- Click the ⓘ About link in the header
+- Comprehensive guide with 8 sections
+- Each section has animated entrance
+- Back button returns to dashboard
+
 ---
 
 ## ⚙️ Customization Options
+
+### Theme Customization (New!)
+Edit `index.css` to customize dark and light themes:
+
+**Dark Theme (default):**
+```css
+:root {
+  --bg:           #0a0a0f;
+  --text:         #f0f0f5;
+  --accent:       #ffa726;
+  /* ... other variables ... */
+}
+```
+
+**Light Theme:**
+```css
+[data-theme="light"] {
+  --bg:           #f8f9fa;
+  --text:         #0a0a0f;
+  --accent:       #ff8c00;
+  /* ... other variables ... */
+}
+```
+
+To add a new theme:
+1. Add a new rule in `index.css`: `[data-theme="your-theme"] { ... }`
+2. Update `ThemeContext.js` to handle the new theme
+3. The theme toggle will automatically include it
 
 ### Enable Custom Cursor (Optional)
 In `App.jsx`, uncomment these lines:
@@ -108,9 +178,12 @@ Edit `index.css`:
 ```
 
 ### Change Accent Color
-Edit `index.css`:
+Edit both `:root` and `[data-theme="light"]`:
 ```css
---accent: #ffa726;  /* Change to your preferred color */
+--accent: #ffa726;  /* Dark theme accent */
+--accent-bright: #ffb74d;
+--accent-dim: rgba(255,167,38,0.12);
+--accent-glow: rgba(255,167,38,0.3);
 ```
 
 ### Disable Animations (Accessibility)
@@ -129,20 +202,35 @@ Add to `index.css`:
 
 ## 🐛 Troubleshooting
 
+### Theme Toggle Not Working?
+- Check that ThemeContext is properly imported in App.jsx
+- Ensure `[data-theme]` attribute is set on the html element
+- Clear browser localStorage: `localStorage.clear()`
+- Verify CSS variables are defined in index.css
+
 ### Animations Not Working?
 - Clear browser cache
 - Check console for errors
 - Ensure framer-motion is installed: `npm list framer-motion`
+- Verify that motion components are imported correctly
+
+### Theme Not Persisting?
+- Check browser localStorage is enabled
+- Ensure privacy mode is not active
+- Clear site data and reload
+- Check ThemeContext.useTheme() hook is being used
 
 ### Performance Issues?
 - Reduce animation complexity in components
 - Disable custom cursor if enabled
 - Check browser DevTools Performance tab
+- Reduce refresh intervals in polling functions
 
 ### Styling Issues?
 - Ensure all CSS files are imported in `index.js`
 - Check for CSS conflicts with browser extensions
 - Try a different browser (Chrome recommended)
+- Verify CSS variable syntax is correct
 
 ---
 
