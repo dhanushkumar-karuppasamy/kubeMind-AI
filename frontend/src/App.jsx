@@ -5,6 +5,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import './App.css';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
+import ClusterExplorer     from './components/ClusterExplorer';
 import MetricsPanel          from './components/MetricsPanel';
 import DependencyGraph       from './components/DependencyGraph';
 import InsightsPanel         from './components/InsightsPanel';
@@ -17,6 +18,7 @@ import ChaosControl          from './components/ChaosControl';
 import ActivityFeed          from './components/ActivityFeed';
 import About                 from './pages/About';
 import GoldenSignalsBar      from './components/GoldenSignalsBar';
+import LLMObservabilityCard   from './components/LLMObservabilityCard';
 
 const API = 'http://localhost:8000';
 
@@ -38,8 +40,14 @@ function Dashboard() {
   const [anomalies, setAnomalies] = useState([]);
   const [graph,     setGraph]     = useState(null);
   const [podCount,  setPodCount]  = useState(0);
+  const [selectedPod, setSelectedPod] = useState(null);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [backendOk,  setBackendOk]  = useState(true);
+  const [queryText, setQueryText] = useState('');
+  const [queryAnswer, setQueryAnswer] = useState(null);
+  const [queryLoading, setQueryLoading] = useState(false);
+  const [queryError, setQueryError] = useState(false);
 
   // Metrics
   useEffect(() => {
@@ -94,6 +102,63 @@ function Dashboard() {
 
   const activeCritical = anomalies.filter(a => a.severity === 'critical').length;
   const highCpuPods    = Object.values(metrics).filter(m => m.cpu_percent > 80).length;
+  const suggestedQueries = [
+    'Which pod is most unstable?',
+    'What should I fix first?',
+    'Is the cluster healthy?',
+  ];
+
+  const submitQuery = async (question) => {
+    const nextQuestion = (question ?? queryText).trim();
+    if (!nextQuestion || queryLoading) return;
+
+    setQueryLoading(true);
+    setQueryError(false);
+
+    try {
+      const response = await fetch(`${API}/api/query`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question: nextQuestion }),
+      });
+
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+      const payload = await response.json();
+      setQueryAnswer({
+        question: nextQuestion,
+        answer: payload.answer || '',
+        generated_at: payload.generated_at,
+      });
+      setQueryText(nextQuestion);
+    } catch (e) {
+      console.error('query error', e);
+      setQueryAnswer(null);
+      setQueryError(true);
+    } finally {
+      setQueryLoading(false);
+    }
+  };
+
+  const handleQuerySubmit = (event) => {
+    event.preventDefault();
+    submitQuery();
+  };
+
+  const handleSuggestionClick = (question) => {
+    setQueryText(question);
+    submitQuery(question);
+  };
+
+  const clearQuery = () => {
+    setQueryText('');
+    setQueryAnswer(null);
+    setQueryError(false);
+  };
+
+  const handlePodSelect = (pod) => {
+    setSelectedPod(pod);
+  };
 
   return (
     <>
@@ -125,6 +190,82 @@ function Dashboard() {
             {!backendOk && (
               <span className="header-error">⚠ Backend offline</span>
             )}
+
+            <div className="header-query-panel">
+              <form className="header-query-form" onSubmit={handleQuerySubmit}>
+                <div className="header-query-row">
+                  <input
+                    className="header-query-input"
+                    type="text"
+                    value={queryText}
+                    onChange={(e) => setQueryText(e.target.value)}
+                    placeholder="Ask KubeMind AI about your cluster..."
+                    aria-label="Ask KubeMind AI about your cluster"
+                  />
+                  <button
+                    type="submit"
+                    className="header-query-send"
+                    disabled={queryLoading}
+                    aria-label="Send question"
+                  >
+                    {queryLoading ? 'Thinking...' : '🔍'}
+                  </button>
+                  {queryAnswer && (
+                    <button
+                      type="button"
+                      className="header-query-clear"
+                      onClick={clearQuery}
+                      aria-label="Clear answer"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+
+                <div className="header-query-chips">
+                  {suggestedQueries.map((question) => (
+                    <button
+                      key={question}
+                      type="button"
+                      className="header-query-chip"
+                      onClick={() => handleSuggestionClick(question)}
+                    >
+                      {question}
+                    </button>
+                  ))}
+                </div>
+
+                {queryError && (
+                  <div className="header-query-error">Could not reach AI</div>
+                )}
+
+                {(queryLoading || queryAnswer) && !queryError && (
+                  <motion.div
+                    className="header-query-popover"
+                    initial={{ opacity: 0, y: -6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.22, ease: 'easeOut' }}
+                  >
+                    {queryLoading ? (
+                      <motion.div
+                        className="header-query-thinking"
+                        animate={{ opacity: [0.55, 1, 0.55] }}
+                        transition={{ duration: 1.2, repeat: Infinity, ease: 'easeInOut' }}
+                      >
+                        Thinking...
+                      </motion.div>
+                    ) : (
+                      <>
+                        <div className="header-query-answer">{queryAnswer?.answer}</div>
+                        <div className="header-query-meta">
+                          {queryAnswer?.generated_at ? new Date(queryAnswer.generated_at).toLocaleTimeString('en-IN', { hour12: false }) : ''}
+                        </div>
+                      </>
+                    )}
+                  </motion.div>
+                )}
+              </form>
+            </div>
 
             <AnimatePresence>
               {activeCritical > 0 && (
@@ -198,81 +339,93 @@ function Dashboard() {
           </div>
         </motion.header>
 
-        {/* ── Main ── */}
-        <main className="app-main">
+        <div className="app-shell">
+          <ClusterExplorer
+            metrics={metrics}
+            anomalies={anomalies}
+            selectedPod={selectedPod}
+            onSelectPod={handlePodSelect}
+            collapsed={sidebarCollapsed}
+            onToggleCollapsed={() => setSidebarCollapsed((prev) => !prev)}
+          />
 
-          {/* Row 1: Full-width metrics */}
-          <motion.div
-            className="grid-row"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-          >
-            <>
-              <GoldenSignalsBar apiBase={API} />
-              <MetricsPanel metrics={metrics} />
-            </>
-          </motion.div>
+          {/* ── Main ── */}
+          <main className="app-main">
 
-          {/* Row 2: Dependency graph (2/3) + Right column (1/3) */}
-          <motion.div
-            className="grid-row cols-3"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
-          >
-            <DependencyGraph graph={graph} />
+            {/* Row 1: Full-width metrics */}
+            <motion.div
+              className="grid-row"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.1 }}
+            >
+              <>
+                <GoldenSignalsBar apiBase={API} />
+                <MetricsPanel metrics={metrics} selectedPod={selectedPod} />
+              </>
+            </motion.div>
 
-            {/* Right column stacks InsightsPanel + HealthScore */}
-            <div className="col-stack">
-              <InsightsPanel anomalies={anomalies} />
-              <HealthScore key={`hs-${refreshKey}`} apiBase={API} />
-            </div>
-          </motion.div>
+            {/* Row 2: Dependency graph (2/3) + Right column (1/3) */}
+            <motion.div
+              className="grid-row cols-3"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+            >
+              <DependencyGraph graph={graph} />
 
-          {/* Row 3: Forecast (1/2) + Correlation (1/2) */}
-          <motion.div
-            className="grid-row cols-2"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.25 }}
-          >
-            <ForecastPanel    key={`fp-${refreshKey}`} apiBase={API} />
-            <CorrelationMatrix key={`cm-${refreshKey}`} apiBase={API} />
-          </motion.div>
+              {/* Right column stacks InsightsPanel + HealthScore */}
+              <div className="col-stack">
+                <LLMObservabilityCard apiBase={API} />
+                <InsightsPanel anomalies={anomalies} selectedPod={selectedPod} />
+                <HealthScore key={`hs-${refreshKey}`} apiBase={API} />
+              </div>
+            </motion.div>
 
-          {/* Row 4: Timeline (full width) */}
-          <motion.div
-            className="grid-row"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.3 }}
-          >
-            <AnomalyTimeline apiBase={API} />
-          </motion.div>
+            {/* Row 3: Forecast (1/2) + Correlation (1/2) */}
+            <motion.div
+              className="grid-row cols-2"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.25 }}
+            >
+              <ForecastPanel    key={`fp-${refreshKey}`} apiBase={API} />
+              <CorrelationMatrix key={`cm-${refreshKey}`} apiBase={API} />
+            </motion.div>
 
-          {/* Row 5: ChaosControl (1/3) + ActivityFeed (2/3) */}
-          <motion.div
-            className="grid-row cols-chaos"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.35 }}
-          >
-            <ChaosControl  key={`cc-${refreshKey}`} apiBase={API} />
-            <ActivityFeed  key={`af-${refreshKey}`} apiBase={API} />
-          </motion.div>
+            {/* Row 4: Timeline (full width) */}
+            <motion.div
+              className="grid-row"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.3 }}
+            >
+              <AnomalyTimeline apiBase={API} />
+            </motion.div>
 
-          {/* Row 6: Recommendations (full width) */}
-          <motion.div
-            className="grid-row"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.4 }}
-          >
-            <RecommendationsPanel key={`rp-${refreshKey}`} apiBase={API} />
-          </motion.div>
+            {/* Row 5: ChaosControl (1/3) + ActivityFeed (2/3) */}
+            <motion.div
+              className="grid-row cols-chaos"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.35 }}
+            >
+              <ChaosControl  key={`cc-${refreshKey}`} apiBase={API} />
+              <ActivityFeed  key={`af-${refreshKey}`} apiBase={API} />
+            </motion.div>
 
-        </main>
+            {/* Row 6: Recommendations (full width) */}
+            <motion.div
+              className="grid-row"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.4 }}
+            >
+              <RecommendationsPanel key={`rp-${refreshKey}`} apiBase={API} />
+            </motion.div>
+
+          </main>
+        </div>
 
         {/* ── Footer ── */}
         <motion.footer

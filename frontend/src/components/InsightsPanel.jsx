@@ -47,15 +47,16 @@ const itemVariants = {
   }
 };
 
-export default function InsightsPanel({ anomalies }) {
-  const latest = [...anomalies].reverse().slice(0, 8);
+export default function InsightsPanel({ anomalies, selectedPod }) {
+  const filtered = selectedPod ? anomalies.filter((a) => a.pod === selectedPod) : anomalies;
+  const latest = [...filtered].reverse().slice(0, 8);
 
   return (
     <div className="card" style={{display:'flex',flexDirection:'column',minHeight:360}}>
       <div className="card-header">
         <span className="card-title">AI Insights</span>
         <AnimatePresence mode="wait">
-          {anomalies.length > 0 ? (
+          {filtered.length > 0 ? (
             <motion.span 
               key="active"
               initial={{ scale: 0, rotate: -180 }}
@@ -70,7 +71,7 @@ export default function InsightsPanel({ anomalies }) {
                 boxShadow: '0 0 20px rgba(248,113,113,0.2)'
               }}
             >
-              {anomalies.length} active
+              {filtered.length} active
             </motion.span>
           ) : (
             <motion.span 
@@ -91,6 +92,30 @@ export default function InsightsPanel({ anomalies }) {
           )}
         </AnimatePresence>
       </div>
+
+      {selectedPod && (
+        <div style={{
+          marginBottom: 14,
+          fontSize: 12,
+          color: 'var(--text-muted)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          flexWrap: 'wrap'
+        }}>
+          <span style={{
+            padding: '4px 10px',
+            borderRadius: 999,
+            border: '1px solid var(--border)',
+            background: 'var(--surface-2)',
+            color: 'var(--accent-bright)',
+            fontWeight: 700,
+            letterSpacing: '0.4px'
+          }}>
+            Filtered by {selectedPod}
+          </span>
+        </div>
+      )}
 
       <AnimatePresence mode="wait">
         {latest.length === 0 ? (

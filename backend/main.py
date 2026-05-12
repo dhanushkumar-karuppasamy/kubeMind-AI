@@ -1,9 +1,10 @@
 # PATH: backend/main.py — REPLACE ENTIRELY
 
-from fastapi import FastAPI
+from fastapi import FastAPI, BackgroundTasks, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import asyncio
 import json
+import random
 from datetime import datetime, timedelta
 from contextlib import asynccontextmanager
 from pydantic import BaseModel
@@ -18,7 +19,7 @@ from agents.dependency_agent import DependencyAgent
 from agents.storage_agent import StorageAgent
 from agents.io_agent import IOAgent
 from agents.log_agent import LogAgent
-from llm.insight_generator import InsightGenerator
+from llm.insight_generator import InsightGenerator, get_llm_stats
 from recommendations import RecommendationEngine
 from forecasting import ForecastingEngine
 from correlation import CorrelationAnalyzer
@@ -55,6 +56,50 @@ class ConfigEventIn(BaseModel):
     title: str
     description: Optional[str] = None
     severity: Optional[str] = "info"
+
+
+class QueryRequest(BaseModel):
+    question: str
+
+
+class ChaosScenarioRequest(BaseModel):
+    scenario_id: str
+
+
+SCENARIO_PRESETS = [
+    {
+        "id": "cpu_storm",
+        "title": "CPU Storm",
+        "description": "Simulates high CPU load on face-recognition",
+        "icon": "⚡",
+    },
+    {
+        "id": "memory_pressure",
+        "title": "Memory Pressure",
+        "description": "Gradual memory leak on student-portal",
+        "icon": "📈",
+    },
+    {
+        "id": "network_burst",
+        "title": "Network Burst",
+        "description": "Spikes network traffic across all pods",
+        "icon": "🌐",
+    },
+    {
+        "id": "cascading_failure",
+        "title": "Cascading Failure",
+        "description": "Triggers CPU spike then memory pressure in sequence",
+        "icon": "🔥",
+    },
+    {
+        "id": "recovery_test",
+        "title": "Full Recovery Test",
+        "description": "Injects then auto-clears an anomaly to show resilience",
+        "icon": "🔄",
+    },
+]
+
+SCENARIO_PRESETS_BY_ID = {scenario["id"]: scenario for scenario in SCENARIO_PRESETS}
 
 
 # ── Lifespan ──────────────────────────────────────────────────
@@ -137,6 +182,129 @@ def _severity_icon(severity: str) -> str:
     return {"critical": "🚨", "high": "⚠️", "medium": "⚡", "low": "ℹ️"}.get(severity, "⚡")
 
 
+def _health_snapshot():
+    if not prom.current_metrics:
+        return {
+            "score": 100,
+            "grade": "A",
+            "status": "No pods yet",
+            "breakdown": {},
+            "pod_count": 0,
+        }
+
+    cutoff = datetime.utcnow() - timedelta(minutes=5)
+    recent = [a for a in anomaly_history if datetime.fromisoformat(a["timestamp"]) >= cutoff]
+
+    breakdown = {"critical": 0, "high": 0, "medium": 0, "low": 0}
+    for a in recent:
+        sev = a.get("severity", "low")
+        breakdown[sev] = breakdown.get(sev, 0) + 1
+
+    deductions = (breakdown["critical"] * 15 +
+                  breakdown["high"] * 8 +
+                  breakdown["medium"] * 3 +
+                  breakdown["low"] * 1)
+    score = max(0, min(100, 100 - deductions))
+    grade = "A" if score >= 90 else "B" if score >= 80 else "C" if score >= 70 else "D" if score >= 60 else "F"
+    status = ("Excellent" if score >= 90 else "Good" if score >= 80
+              else "Degraded" if score >= 70 else "Poor" if score >= 60 else "Critical")
+
+    return {
+        "score": score,
+        "grade": grade,
+        "status": status,
+        "breakdown": breakdown,
+        "pod_count": len(prom.current_metrics),
+    }
+
+
+def _query_context_snapshot():
+    health = _health_snapshot()
+    recent_anomalies = sorted(anomaly_history, key=lambda a: a.get("timestamp", ""), reverse=True)[:3]
+    recommendations = RecommendationEngine(
+        metrics=prom.current_metrics,
+        anomalies=anomaly_history[-20:],
+        dependencies=None,
+    ).generate()[:2]
+
+    pod_lines = []
+    for pod_name, pod_metrics in sorted(prom.current_metrics.items()):
+        pod_lines.append(
+            f"{pod_name}: CPU {pod_metrics.get('cpu_percent', 0):.1f}%, Memory {pod_metrics.get('memory_percent', 0):.1f}%"
+        )
+
+    instability_rank = []
+    for pod_name, pod_metrics in prom.current_metrics.items():
+        anomaly_count = sum(1 for a in anomaly_history if a.get("pod") == pod_name)
+        cpu = pod_metrics.get("cpu_percent", 0.0)
+        memory = pod_metrics.get("memory_percent", 0.0)
+        instability_score = anomaly_count * 10 + cpu * 0.6 + memory * 0.4
+        instability_rank.append((instability_score, pod_name, anomaly_count, cpu, memory))
+    instability_rank.sort(reverse=True)
+
+    context_lines = [
+        f"Health score: {health['score']}/100 (grade {health['grade']}), status {health['status']}, pods {health['pod_count']}",
+        "Pod metrics: " + ("; ".join(pod_lines) if pod_lines else "No pod metrics available."),
+        "Last 3 anomalies: " + (
+            "; ".join(
+                f"{a.get('pod', 'unknown')} | {a.get('severity', 'medium')} | {a.get('type', 'anomaly')}"
+                for a in recent_anomalies
+            ) if recent_anomalies else "None"
+        ),
+        "Top recommendations: " + (
+            "; ".join(rec.get("action", "") for rec in recommendations if rec.get("action")) if recommendations else "None"
+        ),
+    ]
+
+    if instability_rank:
+        _, unstable_pod, anomaly_count, cpu, memory = instability_rank[0]
+        context_lines.append(
+            f"Heuristic most unstable pod: {unstable_pod} ({anomaly_count} anomalies, CPU {cpu:.1f}%, Memory {memory:.1f}%)"
+        )
+
+    return "\n".join(context_lines)
+
+
+async def _run_cpu_storm():
+    prom.spike_cpu("face-recognition")
+
+
+async def _run_memory_pressure():
+    for _ in range(5):
+        prom.spike_memory("student-portal")
+        await asyncio.sleep(0.4)
+
+
+async def _run_network_burst():
+    pods = list(prom.current_metrics.keys())
+    for pod_name in pods:
+        await chaos.inject_anomaly(pod_name, "network_burst", duration=45)
+
+
+async def _run_cascading_failure():
+    await chaos.inject_anomaly("face-recognition", "cpu_spike", duration=60)
+    await asyncio.sleep(5)
+    await chaos.inject_anomaly("student-portal", "memory_leak", duration=60)
+
+
+async def _run_recovery_test():
+    pods = list(prom.current_metrics.keys())
+    if not pods:
+        return
+    pod_name = random.choice(pods)
+    anomaly_type = random.choice(["cpu_spike", "memory_leak", "network_burst", "io_spike"])
+    await chaos.inject_anomaly(pod_name, anomaly_type, duration=20)
+
+
+SCENARIO_HANDLERS = {
+    "cpu_storm": _run_cpu_storm,
+    "memory_pressure": _run_memory_pressure,
+    "network_burst": _run_network_burst,
+    "cascading_failure": _run_cascading_failure,
+    "recovery_test": _run_recovery_test,
+}
+
+
 # ── Existing endpoints (unchanged) ───────────────────────────
 
 @app.get("/health")
@@ -202,11 +370,39 @@ async def recommendations():
     engine = RecommendationEngine(
         metrics=prom.current_metrics,
         anomalies=anomaly_history[-20:],
-        dependencies=None
+        dependencies=None,
     )
     recs = engine.generate()
     return {"recommendations": recs, "count": len(recs),
             "timestamp": datetime.utcnow().isoformat()}
+
+
+@app.post("/api/query")
+async def query_cluster(payload: QueryRequest):
+    question = payload.question.strip()
+    if not question:
+        return {
+            "answer": "KubeMind AI is currently processing. Try again in a moment.",
+            "generated_at": datetime.utcnow().isoformat(),
+        }
+
+    snapshot = _query_context_snapshot()
+    prompt = (
+        "System: You are KubeMind AI, an intelligent Kubernetes assistant. Answer only from the cluster context given. "
+        "Be brief (max 3 sentences). Use plain language.\n"
+        f"User: {snapshot}\nQuestion: {question}"
+    )
+
+    try:
+        answer = llm.generate_insight(prompt)
+    except Exception as e:
+        print(f"[LLM] Query fallback used: {e}")
+        answer = "LLM unavailable. Review the related metrics and logs for more detail."
+
+    if answer == "LLM unavailable. Review the related metrics and logs for more detail.":
+        answer = "KubeMind AI is currently processing. Try again in a moment."
+
+    return {"answer": answer, "generated_at": datetime.utcnow().isoformat()}
 
 
 @app.get("/api/health-score")
@@ -282,6 +478,28 @@ async def chaos_disable():
 @app.get("/api/chaos/status")
 async def chaos_status():
     return chaos.get_status()
+
+
+@app.get("/api/chaos/scenarios")
+async def chaos_scenarios():
+    return {"scenarios": SCENARIO_PRESETS}
+
+
+@app.post("/api/chaos/scenario")
+async def chaos_scenario(payload: ChaosScenarioRequest, background_tasks: BackgroundTasks):
+    scenario = SCENARIO_PRESETS_BY_ID.get(payload.scenario_id)
+    if not scenario:
+        raise HTTPException(status_code=400, detail="Unknown chaos scenario")
+
+    handler = SCENARIO_HANDLERS[payload.scenario_id]
+    background_tasks.add_task(handler)
+
+    return {
+        "scenario_id": scenario["id"],
+        "title": scenario["title"],
+        "status": "triggered",
+        "triggered_at": datetime.utcnow().isoformat(),
+    }
 
 
 @app.post("/api/chaos/inject")
@@ -372,6 +590,11 @@ async def summary_correlations():
         bullets = (bullets + fallback_bullets)[:3]
 
     return {"bullets": bullets, "generated_at": datetime.utcnow().isoformat()}
+
+
+@app.get("/api/llm/stats")
+async def llm_stats_endpoint():
+    return get_llm_stats()
 
 
 @app.get("/api/signals/golden")
